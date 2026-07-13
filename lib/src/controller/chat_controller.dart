@@ -246,11 +246,17 @@ base class ChatController {
     );
   }
 
-  /// Function for getting ChatUser object from user id
+  /// Function for getting ChatUser object from user id.
+  ///
+  /// Chattr fork: returns a lightweight fallback [ChatUser] (id used as name)
+  /// instead of throwing when the id is unknown. Upstream threw, which — because
+  /// this is called during build across many widgets (bubbles, replies,
+  /// reactions, the "who reacted" sheet) — turned a single not-yet-registered
+  /// sender/reactor id into a full red ErrorWidget for the whole message list.
+  /// A fallback lets the host app skip its defensive pre-registration dance.
   ChatUser getUserFromId(String userId) {
     final user = userId == currentUser.id ? currentUser : _otherUsers[userId];
-    if (user == null) throw Exception('User with ID $userId not found!');
-    return user;
+    return user ?? ChatUser(id: userId, name: userId);
   }
 
   /// Function for updating the details of an existing user (other users).
