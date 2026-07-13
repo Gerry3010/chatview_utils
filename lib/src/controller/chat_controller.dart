@@ -177,17 +177,33 @@ base class ChatController {
     messageStreamController.sink.add(initialMessageList);
   }
 
-  /// Function for update message by Digvijaysinh Chauhan
+  /// Function for update message by Digvijaysinh Chauhan.
+  ///
+  /// Chattr fork: no-ops when [messageId] isn't in the list instead of throwing
+  /// 'Message Not Found!'. A reaction/edit arriving for a message beyond the
+  /// loaded page threw, and the exception aborted the whole update loop
+  /// ("reactions only appear after reopening the chat").
   void updateMessage({
     required String messageId,
     required Message newMessage,
   }) {
-    final message = initialMessageList.firstWhereOrNull(
+    final indexOfMessage = initialMessageList.indexWhere(
       (message) => message.id == messageId,
     );
-    if (message == null) throw Exception('Message Not Found!');
-    final indexOfMessage = initialMessageList.indexOf(message);
+    if (indexOfMessage < 0) return;
     initialMessageList[indexOfMessage] = newMessage;
+    if (messageStreamController.isClosed) return;
+    messageStreamController.sink.add(initialMessageList);
+  }
+
+  /// Chattr fork: remove a message by id and re-emit the list. Upstream has no
+  /// remove API, forcing hosts to mutate [initialMessageList] + poke the stream
+  /// by hand to make a deleted/unsent message disappear without reopening.
+  /// No-ops on an unknown id.
+  void removeMessage(String messageId) {
+    final before = initialMessageList.length;
+    initialMessageList.removeWhere((message) => message.id == messageId);
+    if (initialMessageList.length == before) return;
     if (messageStreamController.isClosed) return;
     messageStreamController.sink.add(initialMessageList);
   }
